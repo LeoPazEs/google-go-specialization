@@ -6,6 +6,7 @@ import (
 )
 
 type IAnimal interface {
+	getName() string
 	Eat() string
 	Move() string
 	Speak() string
@@ -16,6 +17,10 @@ type Animal struct {
 	food       string
 	locomotion string
 	noise      string
+}
+
+func (a Animal) getName() string {
+	return a.Name
 }
 
 func (a Animal) Eat() string {
@@ -60,37 +65,33 @@ func animalFactory(animal string, name string) IAnimal {
 }
 
 type AnimalDB struct {
-	Cows   []IAnimal
-	Birds  []IAnimal
-	Snakes []IAnimal
+	Cows   []Cow
+	Birds  []Bird
+	Snakes []Snake
 }
 
-func (aDB *AnimalDB) appendAnimal(a IAnimal) *[]IAnimal {
-	var new_slice *[]IAnimal
+func (aDB *AnimalDB) appendAnimal(a IAnimal) *IAnimal {
 	switch a.(type) {
 	case Cow:
-		aDB.Cows = append(aDB.Cows, a)
-		new_slice = &aDB.Cows
+		aDB.Cows = append(aDB.Cows, a.(Cow))
 	case Bird:
-		aDB.Birds = append(aDB.Birds, a)
-		new_slice = &aDB.Birds
+		aDB.Birds = append(aDB.Birds, a.(Bird))
 	case Snake:
-		aDB.Snakes = append(aDB.Snakes, a)
-		new_slice = &aDB.Snakes
+		aDB.Snakes = append(aDB.Snakes, a.(Snake))
 	default:
 		fmt.Println("Animal type not found.")
 		return nil
 	}
-	return new_slice
+	return &a
 }
 
-func (aDB *AnimalDB) queryAnimal(n string) *Animal {
+func (aDB *AnimalDB) queryAnimal(n string) *IAnimal {
 	db := reflect.ValueOf(aDB).Elem()
 	for i := 0; i < db.NumField(); i++ {
 		animalList := db.Field(i)
 		for j := 0; j < animalList.Len(); j++ {
 			animal := animalList.Index(j).Interface().(IAnimal)
-			if animal.(Animal).Name == n {
+			if animal.getName() == n {
 				return &animal
 			}
 		}
@@ -99,17 +100,33 @@ func (aDB *AnimalDB) queryAnimal(n string) *Animal {
 	return nil
 }
 
+func executeMethod(a IAnimal, method string) {
+	switch method {
+	case "eat":
+		fmt.Println(a.Eat())
+	case "speak":
+		fmt.Println(a.Speak())
+	case "move":
+		fmt.Println(a.Move())
+
+	}
+}
+
 func main() {
-	animals := AnimalDB{Cows: []IAnimal{}, Birds: []IAnimal{}, Snakes: []IAnimal{}}
-	request, method, name := "newanimal", "cow", "izabelly"
+	animals := AnimalDB{Cows: []Cow{}, Birds: []Bird{}, Snakes: []Snake{}}
+	var request, method, name string
 	for {
-		// fmt.Print("> ")
-		// fmt.Scanf("%s %s %s", &request, &name, &method)
+		fmt.Print("> ")
+		fmt.Scanf("%s %s %s", &request, &name, &method)
 		switch request {
 		case "newanimal":
 			animals.appendAnimal(animalFactory(method, name))
 		case "query":
-			animals.queryAnimal(name).Eat()
+			animalPtr := animals.queryAnimal(name)
+			if animalPtr != nil {
+				animal := *animalPtr
+				executeMethod(animal, method)
+			}
 		default:
 			fmt.Println("Invalid request.")
 		}

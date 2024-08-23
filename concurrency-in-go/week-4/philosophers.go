@@ -11,7 +11,6 @@ type Philo struct {
 	id              int
 	Name            string
 	LeftCS, RightCS *Chops
-	ate             int
 }
 
 func (p Philo) eat(wg *sync.WaitGroup) {
@@ -32,17 +31,30 @@ func host(philos []*Philo, eatTimes int, simultaneously int) {
 	if philosQtd/simultaneously < 2 {
 		panic("There are not enough chopsticks on the table for simultaneosly eating quantity.")
 	}
+	if philosQtd%2 == 0 {
+		panic("Only odd number of philosophers")
+	}
 
 	var wg sync.WaitGroup
-	totalEat := philosQtd * eatTimes
-	for totalEat > 0 {
+	philosToEatChan := make(chan int, simultaneously)
+
+	currPhilo := 0
+	firstPhilosopherAte := 0
+	for firstPhilosopherAte < eatTimes {
+		for i := 0; i < simultaneously; i++ {
+			if currPhilo == 0 {
+				firstPhilosopherAte += 1
+			}
+			philosToEatChan <- currPhilo
+			currPhilo = (currPhilo + 2) % philosQtd
+		}
+
 		wg.Add(simultaneously)
-		// How can i prevent the edge case where the philo has already eaten 3 times but is one of the possible to eat
-		// channels?
-		for i, v := range philos {
+
+		for i := 0; i < simultaneously; i++ {
+			go philos[<-philosToEatChan].eat(&wg)
 		}
 		wg.Wait()
-		totalEat -= simultaneously
 	}
 }
 
@@ -59,4 +71,5 @@ func main() {
 		v.LeftCS = chops[i]
 		v.RightCS = chops[(i+1)%5]
 	}
+	host(philos, 3, 2)
 }
